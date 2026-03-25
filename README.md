@@ -1,5 +1,10 @@
 # egrpc (eazy gRPC)
 
+[![CI](https://github.com/privjail/egrpc/actions/workflows/ci.yaml/badge.svg)](https://github.com/privjail/egrpc/actions/workflows/ci.yaml)
+[![PyPI](https://img.shields.io/pypi/v/egrpc)](https://pypi.org/project/egrpc/)
+[![Python](https://img.shields.io/pypi/pyversions/egrpc)](https://pypi.org/project/egrpc/)
+[![License](https://img.shields.io/pypi/l/egrpc)](https://github.com/privjail/egrpc/blob/main/LICENSE)
+
 egrpc is a Python framework for transparent inter-process communication over gRPC.
 It generates protobuf definitions and gRPC services automatically from Python type hints at import time, eliminating the need for `.proto` files or manual code generation.
 Just add decorators and your functions and classes become callable across process boundaries.
