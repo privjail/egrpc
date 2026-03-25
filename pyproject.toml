@@ -1,6 +1,6 @@
 [project]
 name = "egrpc"
-version = "0.0.2"
+version = "0.0.3"
 description = "Eazy gRPC: dynamic protobuf generation from Python type hints"
 readme = "README.md"
 license = "Apache-2.0"
