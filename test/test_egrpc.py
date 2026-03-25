@@ -26,6 +26,12 @@ import egrpc
 
 env_name = "client"
 
+# Poison the typing cache so that Union[int, str] resolves to (str, int) order.
+# The server process (spawned) skips this because the env var is set before import,
+# creating a mismatch in Union member order between client and server.
+if "EGRPC_TEST_SERVER" not in os.environ:
+    _union_poison = List[Union[str, int]]
+
 def serve(port: int, error_queue: Any) -> None:
     global env_name
     env_name = "server"
@@ -46,8 +52,13 @@ def server() -> Iterator[None]:
 
     error_queue: Any = multiprocessing.Queue()
 
+    os.environ["EGRPC_TEST_SERVER"] = "1"
+
+    multiprocessing.set_start_method("spawn", force=True)
     server_process = multiprocessing.Process(target=serve, args=(port, error_queue))
     server_process.start()
+
+    os.environ.pop("EGRPC_TEST_SERVER", None)
 
     time.sleep(1)
 
@@ -125,6 +136,10 @@ def func_ellipsis(e: EllipsisType) -> EllipsisType:
 def func_slice_tuple(idx: tuple[int | slice, ...]) -> tuple[int | slice, ...]:
     return idx
 
+@egrpc.function
+def union_order_func(x: List[Union[int, str]]) -> List[Union[int, str]]:
+    return x
+
 def test_function(server: Any) -> None:
     assert func1("Alice", 30) == "Alice: 30"
     assert func2("Bob", 60) == "Bob: 60.00"
@@ -145,6 +160,9 @@ def test_function(server: Any) -> None:
     assert func_slice(slice(None)) == slice(None)
     assert func_ellipsis(...) is ...
     assert func_slice_tuple((slice(None), slice(None))) == (slice(None), slice(None))
+    assert union_order_func([1, "a"]) == [1, "a"]
+    assert union_order_func(["x", "y"]) == ["x", "y"]
+    assert union_order_func([1, 2, 3]) == [1, 2, 3]
 
 @egrpc.multifunction
 def mfunc1(x: int | float, y: int | float) -> float:
