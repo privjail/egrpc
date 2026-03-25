@@ -9,8 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
       - run: uv build
       - run: uv publish --trusted-publishing always
+      - run: gh release upload ${{ github.event.release.tag_name }} dist/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
