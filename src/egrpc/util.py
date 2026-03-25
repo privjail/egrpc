@@ -153,3 +153,26 @@ def normalize_args(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> D
     bound_args = sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
     return bound_args.arguments
+
+_sorted_union_cache: dict[Any, tuple[TypeHint, ...]] = {}
+
+def _type_sort_key(type_hint: TypeHint) -> str:
+    origin = my_get_origin(type_hint)
+    if origin is not None:
+        args_keys = [_type_sort_key(a) for a in get_args(type_hint)]
+        if origin in (Union, UnionType):
+            args_keys.sort()
+        args_str = ",".join(args_keys)
+        return f"{_type_sort_key(origin)}[{args_str}]"
+    elif isinstance(type_hint, type):
+        return f"{type_hint.__module__}.{type_hint.__qualname__}"
+    else:
+        return repr(type_hint)
+
+def sorted_union_args(type_hint: TypeHint) -> tuple[TypeHint, ...]:
+    global _sorted_union_cache
+    result = _sorted_union_cache.get(type_hint)
+    if result is None:
+        result = tuple(sorted(get_args(type_hint), key=_type_sort_key))
+        _sorted_union_cache[type_hint] = result
+    return result

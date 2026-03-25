@@ -24,7 +24,7 @@ import importlib.util
 from grpc_tools import protoc # type: ignore[import-untyped]
 
 from . import names
-from .util import get_function_typed_params, get_function_return_type, get_class_typed_members, get_method_typed_params, get_method_return_type, TypeHint, my_get_origin
+from .util import get_function_typed_params, get_function_return_type, get_class_typed_members, get_method_typed_params, get_method_return_type, TypeHint, my_get_origin, sorted_union_args
 from .instance_ref import InstanceRefType
 from .registry import get_handler_for_type, get_primitive_type_registry
 
@@ -135,7 +135,7 @@ def gen_proto_field_def(index          : int,
 
     elif type_origin is Union:
         msgname = f"{param_name.capitalize()}UnionMessage"
-        child_type_hints = {f"member{i}": th for i, th in enumerate(type_args)}
+        child_type_hints = {f"member{i}": th for i, th in enumerate(sorted_union_args(type_hint))}
         proto_defs += gen_proto_msg_def(msgname, child_type_hints, allow_subclass=allow_subclass, oneof=True)
         proto_fields.append(f"{indent_str(depth)}{repeated_str}{msgname} {param_name} = {index + 1};")
         index += 1

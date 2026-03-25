@@ -19,7 +19,7 @@ from types import ModuleType
 from collections.abc import Sequence, Mapping
 
 from . import names
-from .util import is_type_match, get_function_typed_params, get_function_return_type, get_method_typed_params, get_method_return_type, normalize_args, TypeHint, my_get_origin
+from .util import is_type_match, get_function_typed_params, get_function_return_type, get_method_typed_params, get_method_return_type, normalize_args, TypeHint, my_get_origin, sorted_union_args
 from .compiler import proto_primitive_type_mapping, proto_dataclass_type_mapping, proto_remoteclass_type_mapping, proto_remoteclass_id_mapping, proto_remoteclass_id_reverse_mapping, is_subclass, subclasses, EllipsisType
 from .instance_ref import InstanceRefType, get_ref_from_instance, get_instance_from_ref
 from .registry import get_handler_for_type
@@ -179,7 +179,7 @@ def get_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, a
 
     elif type_origin is Union:
         child_proto_msg = getattr(proto_msg, param_name)
-        for i, th in enumerate(type_args):
+        for i, th in enumerate(sorted_union_args(type_hint)):
             if child_proto_msg.HasField(f"member{i}"):
                 return get_proto_field(child_proto_msg, f"member{i}", th, allow_subclass=allow_subclass, on_server=on_server)
         raise ValueError(f"Parameter '{param_name}' is empty.")
@@ -281,7 +281,7 @@ def set_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, o
 
     elif type_origin is Union:
         child_proto_msg = getattr(proto_msg, param_name)
-        for i, th in enumerate(type_args):
+        for i, th in enumerate(sorted_union_args(type_hint)):
             # TODO: consider what to do when obj matches multiple candidates
             if is_type_match(obj, th):
                 set_proto_field(child_proto_msg, f"member{i}", th, obj, allow_subclass=allow_subclass, on_server=on_server)
