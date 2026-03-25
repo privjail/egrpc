@@ -178,8 +178,8 @@ def dcfunc2(d1: Data, d2: Data) -> bool:
 def test_dataclass(server: Any) -> None:
     d = Data(3, 2.2)
     assert dcfunc1(d) == pytest.approx(3 * 2.2)
-    assert dcfunc2(d, d) == True
-    assert dcfunc2(d, Data(2, 2.2)) == False
+    assert dcfunc2(d, d) is True
+    assert dcfunc2(d, Data(2, 2.2)) is False
 
 @egrpc.remoteclass
 class Point():
