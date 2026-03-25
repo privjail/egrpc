@@ -45,7 +45,8 @@ def proto_method_rpc_name(cls: Type[T], method: Callable[..., Any]) -> str:
     elif method.__name__ == "__del__":
         return f"{cls_name}Del"
     else:
-        method_name = proto_base_name(method).removeprefix(cls_name)
+        base = proto_base_name(method)
+        method_name = base[len(cls_name):] if base.startswith(cls_name) else base
         return f"{cls_name}{method_name}Method"
 
 def proto_method_req_name(cls: Type[T], method: Callable[..., Any]) -> str:
@@ -56,7 +57,8 @@ def proto_method_req_name(cls: Type[T], method: Callable[..., Any]) -> str:
     elif method.__name__ == "__del__":
         return f"{cls_name}DelRemoteClassRequest"
     else:
-        method_name = proto_base_name(method).removeprefix(cls_name)
+        base = proto_base_name(method)
+        method_name = base[len(cls_name):] if base.startswith(cls_name) else base
         return f"{cls_name}{method_name}MethodRemoteClassRequest"
 
 def proto_method_res_name(cls: Type[T], method: Callable[..., Any]) -> str:
@@ -67,7 +69,8 @@ def proto_method_res_name(cls: Type[T], method: Callable[..., Any]) -> str:
     elif method.__name__ == "__del__":
         return f"{cls_name}DelRemoteClassResponse"
     else:
-        method_name = proto_base_name(method).removeprefix(cls_name)
+        base = proto_base_name(method)
+        method_name = base[len(cls_name):] if base.startswith(cls_name) else base
         return f"{cls_name}{method_name}MethodRemoteClassResponse"
 
 def proto_instance_ref_name(cls: Type[T]) -> str:

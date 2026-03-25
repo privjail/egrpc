@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import get_type_hints, get_origin, get_args, Union, List, Tuple, Dict, Any, TypeVar, Callable, Type, ParamSpec
-from types import UnionType
+from __future__ import annotations
+from typing import get_type_hints, get_origin, get_args, Union, List, Tuple, Dict, Any, TypeVar, Callable, Type, Optional
+from typing_extensions import ParamSpec
 from collections.abc import Sequence, Mapping
 import inspect
 
@@ -23,14 +24,14 @@ R = TypeVar("R")
 
 TypeHint = Any
 
-SubtypeRule = Callable[[TypeHint, TypeHint], bool | None]
-_subtype_rules: list[SubtypeRule] = []
+SubtypeRule = Callable[[TypeHint, TypeHint], Optional[bool]]
+_subtype_rules: List[SubtypeRule] = []
 
 def register_subtype_rule(rule: SubtypeRule) -> None:
     global _subtype_rules
     _subtype_rules.append(rule)
 
-def check_subtype_rules(type_hint1: TypeHint, type_hint2: TypeHint) -> bool | None:
+def check_subtype_rules(type_hint1: TypeHint, type_hint2: TypeHint) -> Optional[bool]:
     global _subtype_rules
     for rule in _subtype_rules:
         result = rule(type_hint1, type_hint2)
@@ -54,13 +55,13 @@ def is_subtype(type_hint1: TypeHint, type_hint2: TypeHint) -> bool:
         except TypeError:
             return type_hint1 is type_hint2
 
-    elif type_origin1 in (Union, UnionType) and type_origin2 in (Union, UnionType):
+    elif type_origin1 is Union and type_origin2 is Union:
         return all(any(is_subtype(th1, th2) for th2 in type_args2) for th1 in type_args1)
 
-    elif type_origin2 in (Union, UnionType):
+    elif type_origin2 is Union:
         return any(is_subtype(type_hint1, th2) for th2 in type_args2)
 
-    elif type_origin1 in (Union, UnionType):
+    elif type_origin1 is Union:
         return all(is_subtype(th1, type_hint2) for th1 in type_args1)
 
     else:
@@ -84,7 +85,7 @@ def is_type_match(obj: Any, type_hint: TypeHint) -> bool:
     if type_origin is None:
         return isinstance(obj, type_hint)
 
-    elif type_origin in (Union, UnionType):
+    elif type_origin is Union:
         return any(is_type_match(obj, th) for th in type_args)
 
     elif type_origin in (tuple, Tuple):
@@ -125,7 +126,7 @@ def is_type_match(obj: Any, type_hint: TypeHint) -> bool:
             return all(is_subtype(th1, th2) for th1, th2 in zip(get_args(obj.__orig_class__), type_args))
         return True
 
-def get_function_typed_params(func: Callable[P, R]) -> dict[str, TypeHint]:
+def get_function_typed_params(func: Callable[P, R]) -> Dict[str, TypeHint]:
     type_hints = get_type_hints(func)
     param_names = list(inspect.signature(func).parameters.keys())
     return {param_name: type_hints[param_name] for param_name in param_names}
@@ -134,10 +135,10 @@ def get_function_return_type(func: Callable[P, R]) -> TypeHint:
     type_hints = get_type_hints(func)
     return type_hints["return"]
 
-def get_class_typed_members(cls: Type[T]) -> dict[str, TypeHint]:
+def get_class_typed_members(cls: Type[T]) -> Dict[str, TypeHint]:
     return get_type_hints(cls)
 
-def get_method_typed_params(cls: Type[T], method: Callable[P, R]) -> dict[str, TypeHint]:
+def get_method_typed_params(cls: Type[T], method: Callable[P, R]) -> Dict[str, TypeHint]:
     type_hints = get_type_hints(method)
     param_names = list(inspect.signature(method).parameters.keys())
     return {param_names[0]: cls,
@@ -147,7 +148,7 @@ def get_method_return_type(cls: Type[T], method: Callable[P, R]) -> TypeHint:
     type_hints = get_type_hints(method)
     return type_hints["return"]
 
-def normalize_args(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> dict[str, Any]:
+def normalize_args(func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> Dict[str, Any]:
     sig = inspect.signature(func)
     bound_args = sig.bind(*args, **kwargs)
     bound_args.apply_defaults()

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import Any, Protocol, Type
-from typing import Self
+from typing import Any, Protocol, Type, Optional, Dict
+from typing_extensions import Self
 
 from .util import TypeHint
 
@@ -26,25 +26,25 @@ class PayloadType(Protocol):
     def unpack(self) -> Any:
         ...
 
-_registry: dict[Type[Any], Type[PayloadType]] = {}
+_registry: Dict[Type[Any], Type[PayloadType]] = {}
 
 def register_type(python_type: Type[Any], payload_cls: Type[PayloadType]) -> None:
     global _registry
     _registry[python_type] = payload_cls
 
-def get_handler_for_type(type_hint: TypeHint) -> Type[PayloadType] | None:
+def get_handler_for_type(type_hint: TypeHint) -> Optional[Type[PayloadType]]:
     global _registry
     for python_type, handler in _registry.items():
         if isinstance(type_hint, type) and issubclass(type_hint, python_type):
             return handler
     return None
 
-_primitive_type_registry: dict[type, str] = {}
+_primitive_type_registry: Dict[type, str] = {}
 
 def register_primitive_type(python_type: type, proto_type: str) -> None:
     global _primitive_type_registry
     _primitive_type_registry[python_type] = proto_type
 
-def get_primitive_type_registry() -> dict[type, str]:
+def get_primitive_type_registry() -> Dict[type, str]:
     global _primitive_type_registry
     return _primitive_type_registry

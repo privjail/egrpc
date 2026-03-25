@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import annotations
+from typing import Optional, Type, Tuple, List
 import json
 import builtins
 import importlib
@@ -20,14 +21,14 @@ import importlib
 class RemoteError(Exception):
     pass
 
-def serialize_exception(exc: Exception) -> tuple[str, str]:
+def serialize_exception(exc: Exception) -> Tuple[str, str]:
     info = {
         "type": f"{type(exc).__module__}.{type(exc).__name__}",
         "message": str(exc),
     }
     return ("x-exception-info", json.dumps(info))
 
-def deserialize_exception(metadata: list[tuple[str, str]]) -> Exception:
+def deserialize_exception(metadata: List[Tuple[str, str]]) -> Exception:
     metadata_dict = dict(metadata)
     info_json = metadata_dict.get("x-exception-info")
     if info_json is None:
@@ -37,13 +38,13 @@ def deserialize_exception(metadata: list[tuple[str, str]]) -> Exception:
     exc_cls = _get_exception_class(info["type"])
     return exc_cls(info["message"])
 
-def _get_exception_class(type_name: str) -> type[Exception]:
+def _get_exception_class(type_name: str) -> Type[Exception]:
     parts = type_name.rsplit(".", 1)
     if len(parts) == 2:
         module_name, class_name = parts
         try:
             module = importlib.import_module(module_name)
-            cls: type[Exception] | None = getattr(module, class_name, None)
+            cls: Optional[Type[Exception]] = getattr(module, class_name, None)
             if cls is not None and isinstance(cls, type) and issubclass(cls, Exception):
                 return cls
         except (ImportError, AttributeError):
@@ -51,7 +52,7 @@ def _get_exception_class(type_name: str) -> type[Exception]:
 
     # Fallback: try builtins (ValueError, TypeError, etc.)
     class_name = type_name.split(".")[-1]
-    builtin_cls: type[Exception] | None = getattr(builtins, class_name, None)
+    builtin_cls: Optional[Type[Exception]] = getattr(builtins, class_name, None)
     if builtin_cls is not None and isinstance(builtin_cls, type) and issubclass(builtin_cls, Exception):
         return builtin_cls
 

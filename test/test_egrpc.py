@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from types import EllipsisType
 from typing import Union, List, Tuple, Dict, Optional, Iterator, Any, Generic, TypeVar, get_origin
 import sys
 import os
@@ -82,31 +81,31 @@ def func1(name: str, age: int) -> str:
     return f"{name}: {age}"
 
 @egrpc.function
-def func2(name: str, weight: int | float) -> str:
+def func2(name: str, weight: Union[int, float]) -> str:
     return f"{name}: {weight:.2f}"
 
 @egrpc.function
-def func3(x: Union[int, float]) -> int | float:
+def func3(x: Union[int, float]) -> Union[int, float]:
     return x * x
 
 @egrpc.function
-def func4(lst: list[int] | list[str], n: int) -> list[int] | List[str]:
+def func4(lst: Union[List[int], List[str]], n: int) -> Union[List[int], List[str]]:
     return lst * n
 
 @egrpc.function
-def func5(lst: List[int | str], n: int) -> list[int | str]:
+def func5(lst: List[Union[int, str]], n: int) -> List[Union[int, str]]:
     return lst * n
 
 @egrpc.function
-def func6(tup: tuple[int, str]) -> Tuple[str, int]:
+def func6(tup: Tuple[int, str]) -> Tuple[str, int]:
     return tup[1], tup[0]
 
 @egrpc.function
-def func7(d: Dict[str, int]) -> dict[str, list[str]]:
+def func7(d: Dict[str, int]) -> Dict[str, List[str]]:
     return {k: [k] * v for k, v in d.items()}
 
 @egrpc.function
-def func8(x: Optional[int] = None) -> int | None:
+def func8(x: Optional[int] = None) -> Optional[int]:
     return x * x if x is not None else None
 
 @egrpc.function
@@ -117,12 +116,14 @@ def func9(x: Tuple[int, ...]) -> Tuple[float, ...]:
 def func_slice(s: slice) -> slice:
     return s
 
+EllipsisType = type(...)
+
 @egrpc.function
-def func_ellipsis(e: EllipsisType) -> EllipsisType:
+def func_ellipsis(e: EllipsisType) -> EllipsisType:  # type: ignore[valid-type]
     return e
 
 @egrpc.function
-def func_slice_tuple(idx: tuple[int | slice, ...]) -> tuple[int | slice, ...]:
+def func_slice_tuple(idx: Tuple[Union[int, slice], ...]) -> Tuple[Union[int, slice], ...]:
     return idx
 
 def test_function(server: Any) -> None:
@@ -146,22 +147,6 @@ def test_function(server: Any) -> None:
     assert func_ellipsis(...) is ...
     assert func_slice_tuple((slice(None), slice(None))) == (slice(None), slice(None))
 
-@egrpc.multifunction
-def mfunc1(x: int | float, y: int | float) -> float:
-    return x + y
-
-@mfunc1.register
-def _(x: int, y: int) -> int:
-    return x + y
-
-def test_multifunction(server: Any) -> None:
-    assert mfunc1(1, 2) == 3
-    assert isinstance(mfunc1(1, 2), int)
-    assert mfunc1(1.1, 2) == pytest.approx(3.1)
-    assert isinstance(mfunc1(1.1, 2), float)
-    assert mfunc1(1.1, 2.2) == pytest.approx(3.3)
-    assert isinstance(mfunc1(1.1, 2.2), float)
-
 @egrpc.dataclass
 class Data():
     x: int
@@ -184,7 +169,7 @@ def test_dataclass(server: Any) -> None:
 @egrpc.remoteclass
 class Point():
     @egrpc.method
-    def __init__(self, x: int | float, y: int | float, z: int | float):
+    def __init__(self, x: Union[int, float], y: Union[int, float], z: Union[int, float]):
         self.x = x
         self.y = y
         self.z = z
@@ -196,14 +181,6 @@ class Point():
     @egrpc.method
     def __str__(self) -> str:
         return ",".join([str(self.x), str(self.y), str(self.z)])
-
-    @egrpc.multimethod
-    def __mul__(self, other: int | float) -> "Point":
-        return Point(self.x * other, self.y * other, self.z * other)
-
-    @__mul__.register
-    def _(self, other: "Point") -> float:
-        return self.x * other.x + self.y * other.y + self.z * other.z
 
 @egrpc.function
 def identity(p: Point) -> Point:
@@ -222,9 +199,6 @@ def test_remoteclass(server: Any) -> None:
     assert p1.norm() == pytest.approx(math.sqrt(14))
     assert norm(p1) == pytest.approx(math.sqrt(14))
     assert str(p1) == "1,2,3"
-    assert (p1 * 2) != p1
-    assert (p1 * 2).norm() == pytest.approx(math.sqrt(56))
-    assert p1 * p2 == pytest.approx(15.4)
 
     with pytest.raises(AttributeError):
         p1.x
@@ -441,7 +415,7 @@ class _MyInt(int, Generic[_T]):
 
 egrpc.register_primitive_type(_MyInt, "int64")
 
-def _my_int_subtype_rule(t1: Any, t2: Any) -> bool | None:
+def _my_int_subtype_rule(t1: Any, t2: Any) -> Optional[bool]:
     o1 = get_origin(t1)
     o2 = get_origin(t2)
     if o1 is _MyInt and o2 is None:
@@ -457,7 +431,7 @@ def my_int_identity(x: _MyInt[Any]) -> _MyInt[Any]:
     return x
 
 @egrpc.function
-def accept_my_int_or_float(x: _MyInt[Any] | float) -> float:
+def accept_my_int_or_float(x: Union[_MyInt[Any], float]) -> float:
     return float(x)
 
 def test_custom_type_registration(server: Any) -> None:

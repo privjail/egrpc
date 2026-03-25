@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import get_args, Union, List, Tuple, Dict, Callable, Any, TypeVar, Type, ParamSpec
-from types import EllipsisType, UnionType, ModuleType
+from typing import get_args, Union, List, Tuple, Dict, Callable, Any, TypeVar, Type, Optional
+from typing_extensions import ParamSpec
+from types import ModuleType
 from collections.abc import Sequence, Mapping
 import os
 import sys
@@ -31,6 +32,8 @@ T = TypeVar("T")
 P = ParamSpec("P")
 R = TypeVar("R")
 
+EllipsisType = type(...)
+
 proto_primitive_type_mapping = {
     str          : "string",
     int          : "int64",
@@ -41,10 +44,10 @@ proto_primitive_type_mapping = {
     bytes        : "bytes",
 }
 
-proto_dataclass_type_mapping: dict[Any, str] = {}
-proto_remoteclass_type_mapping: dict[Any, str] = {}
-proto_remoteclass_id_mapping: dict[Any, int] = {}
-proto_remoteclass_id_reverse_mapping: dict[int, Any] = {}
+proto_dataclass_type_mapping: Dict[Any, str] = {}
+proto_remoteclass_type_mapping: Dict[Any, str] = {}
+proto_remoteclass_id_mapping: Dict[Any, int] = {}
+proto_remoteclass_id_reverse_mapping: Dict[int, Any] = {}
 
 proto_header = """syntax = "proto3";
 
@@ -61,10 +64,10 @@ proto_content = ""
 def indent_str(depth: int) -> str:
     return " " * depth * 2
 
-def is_subclass(type_hint: TypeHint, type_mapping: dict[Any, str]) -> bool:
+def is_subclass(type_hint: TypeHint, type_mapping: Dict[Any, str]) -> bool:
     return isinstance(type_hint, type) and issubclass(type_hint, tuple(type_mapping.keys()))
 
-def subclasses(type_hint: TypeHint, type_mapping: dict[Any, str]) -> dict[TypeHint, str]:
+def subclasses(type_hint: TypeHint, type_mapping: Dict[Any, str]) -> Dict[TypeHint, str]:
     if isinstance(type_hint, type):
         return {th: proto_type for th, proto_type in type_mapping.items() if issubclass(th, type_hint)}
     else:
@@ -90,7 +93,7 @@ def gen_proto_field_def(index          : int,
                         type_hint      : TypeHint,
                         allow_subclass : bool = True,
                         repeated       : bool = False,
-                        depth          : int = 0) -> tuple[list[str], list[str], int]:
+                        depth          : int = 0) -> Tuple[List[str], List[str], int]:
     type_hint = resolve_custom_type(type_hint)
     type_origin = my_get_origin(type_hint)
     type_args = get_args(type_hint)
@@ -130,7 +133,7 @@ def gen_proto_field_def(index          : int,
         proto_fields.append(f"{indent_str(depth)}{repeated_str}{proto_type} {param_name} = {index + 1};")
         index += 1
 
-    elif type_origin in (Union, UnionType):
+    elif type_origin is Union:
         msgname = f"{param_name.capitalize()}UnionMessage"
         child_type_hints = {f"member{i}": th for i, th in enumerate(type_args)}
         proto_defs += gen_proto_msg_def(msgname, child_type_hints, allow_subclass=allow_subclass, oneof=True)
@@ -166,11 +169,11 @@ def gen_proto_field_def(index          : int,
     return proto_fields, proto_defs, index
 
 def gen_proto_msg_def(msgname        : str,
-                      typed_params   : dict[str, TypeHint],
+                      typed_params   : Dict[str, TypeHint],
                       allow_subclass : bool = True,
                       repeated       : bool = False,
                       oneof          : bool = False,
-                      depth          : int = 0) -> list[str]:
+                      depth          : int = 0) -> List[str]:
     index = 0
     proto_defs = []
     proto_inner_defs = []
@@ -195,7 +198,7 @@ def gen_proto_msg_def(msgname        : str,
 
     return proto_defs
 
-deferred_compilation: list[Callable[[], None]] = []
+deferred_compilation: List[Callable[[], None]] = []
 
 def defer(func: Callable[[], None]) -> None:
     global deferred_compilation
@@ -206,7 +209,7 @@ def do_deferred() -> None:
     pending = deferred_compilation
     deferred_compilation = []
 
-    last_error: Exception | None = None
+    last_error: Optional[Exception] = None
 
     while pending:
         next_pending = []
@@ -270,10 +273,10 @@ def compile_dataclass(cls: Type[T]) -> None:
 
     defer(do_compile)
 
-proto_remoteclass_rpc_defs: dict[Type[Any], list[str]] = {}
-proto_remoteclass_msg_defs: dict[Type[Any], list[str]] = {}
+proto_remoteclass_rpc_defs: Dict[Type[Any], List[str]] = {}
+proto_remoteclass_msg_defs: Dict[Type[Any], List[str]] = {}
 
-def add_remoteclass_method_def(cls: Type[T], proto_rpc_def: str, proto_req_def: list[str], proto_res_def: list[str]) -> None:
+def add_remoteclass_method_def(cls: Type[T], proto_rpc_def: str, proto_req_def: List[str], proto_res_def: List[str]) -> None:
     global proto_remoteclass_rpc_defs, proto_remoteclass_msg_defs
 
     if cls not in proto_remoteclass_rpc_defs:
@@ -386,7 +389,7 @@ def compile_remoteclass_method(cls: Type[T], method: Callable[P, R]) -> None:
 
     defer(do_compile)
 
-def compile_proto() -> tuple[ModuleType, ModuleType]:
+def compile_proto() -> Tuple[ModuleType, ModuleType]:
     proto_primitive_type_mapping.update(get_primitive_type_registry())
     do_deferred()
 

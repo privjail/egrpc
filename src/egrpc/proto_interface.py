@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import get_type_hints, get_args, Union, List, Tuple, Dict, TypeVar, Callable, Any, ParamSpec, Type
-from types import EllipsisType, UnionType, ModuleType
+from __future__ import annotations
+from typing import get_type_hints, get_args, Union, List, Tuple, Dict, TypeVar, Callable, Any, Type, Optional
+from typing_extensions import ParamSpec
+from types import ModuleType
 from collections.abc import Sequence, Mapping
 
 from . import names
 from .util import is_type_match, get_function_typed_params, get_function_return_type, get_method_typed_params, get_method_return_type, normalize_args, TypeHint, my_get_origin
-from .compiler import proto_primitive_type_mapping, proto_dataclass_type_mapping, proto_remoteclass_type_mapping, proto_remoteclass_id_mapping, proto_remoteclass_id_reverse_mapping, is_subclass, subclasses
+from .compiler import proto_primitive_type_mapping, proto_dataclass_type_mapping, proto_remoteclass_type_mapping, proto_remoteclass_id_mapping, proto_remoteclass_id_reverse_mapping, is_subclass, subclasses, EllipsisType
 from .instance_ref import InstanceRefType, get_ref_from_instance, get_instance_from_ref
 from .registry import get_handler_for_type
 
@@ -28,7 +30,7 @@ R = TypeVar("R")
 
 ProtoMsg = Any
 
-dynamic_pb2: ModuleType | None = None
+dynamic_pb2: Optional[ModuleType] = None
 
 def init_proto(module: ModuleType) -> None:
     global dynamic_pb2
@@ -56,7 +58,7 @@ def pack_proto_function_request(func: Callable[P, R], *args: P.args, **kwargs: P
 
     return msg
 
-def unpack_proto_function_request(func: Callable[P, R], msg: ProtoMsg) -> dict[str, Any]:
+def unpack_proto_function_request(func: Callable[P, R], msg: ProtoMsg) -> Dict[str, Any]:
     typed_params = get_function_typed_params(func)
     return {param_name: get_proto_field(msg, param_name, type_hint, allow_subclass=True, on_server=True) \
             for param_name, type_hint in typed_params.items()}
@@ -90,7 +92,7 @@ def pack_proto_method_request(cls: Type[T], method: Callable[P, R], *args: P.arg
 
     return msg
 
-def unpack_proto_method_request(cls: Type[T], method: Callable[P, R], msg: ProtoMsg) -> dict[str, Any]:
+def unpack_proto_method_request(cls: Type[T], method: Callable[P, R], msg: ProtoMsg) -> Dict[str, Any]:
     typed_params = get_method_typed_params(cls, method)
 
     if method.__name__ == "__init__":
@@ -175,7 +177,7 @@ def get_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, a
 
         return get_instance_from_ref(actual_cls, instance_ref, type_hint, on_server)
 
-    elif type_origin in (Union, UnionType):
+    elif type_origin is Union:
         child_proto_msg = getattr(proto_msg, param_name)
         for i, th in enumerate(type_args):
             if child_proto_msg.HasField(f"member{i}"):
@@ -214,7 +216,7 @@ def get_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, a
         else:
             raise TypeError(f"Type {type_origin} is not supported.")
 
-def get_proto_repeated_field(repeated_container: Any, param_name: str, type_hint: TypeHint, allow_subclass: bool, on_server: bool) -> list[Any]:
+def get_proto_repeated_field(repeated_container: Any, param_name: str, type_hint: TypeHint, allow_subclass: bool, on_server: bool) -> List[Any]:
     if type_hint in proto_primitive_type_mapping:
         # RepeatedScalarContainer
         return list(repeated_container)
@@ -277,7 +279,7 @@ def set_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, o
         msg.ref = instance_ref
         msg.type_id = proto_remoteclass_id_mapping[actual_cls]
 
-    elif type_origin in (Union, UnionType):
+    elif type_origin is Union:
         child_proto_msg = getattr(proto_msg, param_name)
         for i, th in enumerate(type_args):
             # TODO: consider what to do when obj matches multiple candidates
@@ -314,7 +316,7 @@ def set_proto_field(proto_msg: ProtoMsg, param_name: str, type_hint: TypeHint, o
         else:
             raise TypeError(f"Type {type_origin} is not supported.")
 
-def set_proto_repeated_field(repeated_container: Any, param_name: str, type_hint: TypeHint, objs: list[Any], allow_subclass: bool, on_server: bool) -> None:
+def set_proto_repeated_field(repeated_container: Any, param_name: str, type_hint: TypeHint, objs: List[Any], allow_subclass: bool, on_server: bool) -> None:
     if type_hint in proto_primitive_type_mapping:
         # RepeatedScalarContainer
         repeated_container.extend(objs)

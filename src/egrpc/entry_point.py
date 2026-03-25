@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+from typing import Optional
 import os
 
 from .compiler import compile_proto
@@ -23,7 +25,7 @@ def init() -> None:
     init_proto(dynamic_pb2)
     init_grpc(dynamic_pb2_grpc)
 
-def serve(port: int, host: str | None = None) -> None:
+def serve(port: int, host: Optional[str] = None) -> None:
     init()
     server = init_server(port, host)
     server.start()

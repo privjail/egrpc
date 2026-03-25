@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar, Type, Any, get_args
+from __future__ import annotations
+from typing import TypeVar, Type, Any, Dict, get_args
 import weakref
 
 from .util import TypeHint
@@ -33,12 +34,12 @@ def init_remoteclass(cls: Type[T]) -> None:
     setattr(cls, "__instance_map_server", {})
     setattr(cls, "__instance_map_client", {})
 
-def _get_instance_map_server(cls: Type[T]) -> dict[InstanceRefType, T]:
-    instance_map: dict[InstanceRefType, T] = getattr(cls, "__instance_map_server")
+def _get_instance_map_server(cls: Type[T]) -> Dict[InstanceRefType, T]:
+    instance_map: Dict[InstanceRefType, T] = getattr(cls, "__instance_map_server")
     return instance_map
 
-def _get_instance_map_client(cls: Type[T]) -> dict[InstanceRefType, WeakRef[T]]:
-    instance_map: dict[InstanceRefType, WeakRef[T]] = getattr(cls, "__instance_map_client")
+def _get_instance_map_client(cls: Type[T]) -> Dict[InstanceRefType, WeakRef[T]]:
+    instance_map: Dict[InstanceRefType, WeakRef[T]] = getattr(cls, "__instance_map_client")
     return instance_map
 
 def _get_instance_ref(obj: T) -> int:
@@ -79,7 +80,7 @@ def get_instance_from_ref(cls: Type[T], instance_ref: InstanceRefType, type_hint
         obj = object.__new__(cls)
 
         # If this type is a generic type, set `__orig_class__` attribute
-        # so that this information is used for type-based dispatch (by multimethod.multidispatch)
+        # so that this information is used for type-based dispatch
         if len(get_args(type_hint)) > 0:
             setattr(obj, "__orig_class__", type_hint)
 

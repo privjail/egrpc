@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar, Callable, Type, Any, ParamSpec, NoReturn
+from __future__ import annotations
+from typing import TypeVar, Callable, Type, Any, Optional, NoReturn, Dict
+from typing_extensions import ParamSpec
 from types import ModuleType
 from concurrent import futures
 import traceback
@@ -26,7 +28,7 @@ T = TypeVar("T")
 P = ParamSpec("P")
 R = TypeVar("R")
 
-dynamic_pb2_grpc: ModuleType | None = None
+dynamic_pb2_grpc: Optional[ModuleType] = None
 
 def init_grpc(module: ModuleType) -> None:
     global dynamic_pb2_grpc
@@ -39,7 +41,7 @@ def get_grpc_module() -> ModuleType:
 
 HandlerType = Callable[[Any, ProtoMsg, Any], ProtoMsg]
 
-proto_handlers: dict[str, dict[str, HandlerType]] = {}
+proto_handlers: Dict[str, Dict[str, HandlerType]] = {}
 
 def _abort_with_exception(context: Any, exc: Exception) -> NoReturn:
     traceback.print_exc()
@@ -79,7 +81,7 @@ def grpc_register_method(cls: Type[T], method: Callable[P, R], handler: HandlerT
 
 MAX_MESSAGE_LENGTH = 256 * 1024 * 1024  # 256MB
 
-def init_server(port: int, host: str | None = None) -> Any:
+def init_server(port: int, host: Optional[str] = None) -> Any:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=1),
                          maximum_concurrent_rpcs=1,
                          options=(
@@ -104,8 +106,8 @@ def init_server(port: int, host: str | None = None) -> Any:
 
 ChannelType = Any
 
-client_channel: ChannelType | None = None
-client_stubs: dict[str, Any] = {}
+client_channel: Optional[ChannelType] = None
+client_stubs: Dict[str, Any] = {}
 
 def init_client(hostname: str, port: int) -> None:
     global client_channel, client_stubs
