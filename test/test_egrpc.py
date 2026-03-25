@@ -49,11 +49,11 @@ def serve(port: int, error_queue: Any) -> None:
 def server() -> Iterator[None]:
     port = 12345
 
+    multiprocessing.set_start_method("spawn", force=True)
+
     error_queue: Any = multiprocessing.Queue()
 
     os.environ["EGRPC_TEST_SERVER"] = "1"
-
-    multiprocessing.set_start_method("spawn", force=True)
     server_process = multiprocessing.Process(target=serve, args=(port, error_queue))
     server_process.start()
 
