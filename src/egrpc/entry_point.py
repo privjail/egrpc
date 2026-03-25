@@ -15,10 +15,11 @@
 from __future__ import annotations
 from typing import Optional
 import os
+import grpc  # type: ignore[import-untyped]
 
 from .compiler import compile_proto
 from .proto_interface import init_proto
-from .grpc_interface import init_grpc, init_server, init_client, del_client
+from .grpc_interface import init_grpc, init_server, init_client, del_client, get_client_channel
 
 def init() -> None:
     dynamic_pb2, dynamic_pb2_grpc = compile_proto()
@@ -33,9 +34,14 @@ def serve(port: int, host: Optional[str] = None) -> None:
     print(f"Server started on {bind_target} (pid = {os.getpid()}).")
     server.wait_for_termination()
 
-def connect(hostname: str, port: int) -> None:
+def connect(hostname: str, port: int, timeout: float = 5.0) -> None:
     init()
     init_client(hostname, port)
+    try:
+        grpc.channel_ready_future(get_client_channel()).result(timeout=timeout)
+    except grpc.FutureTimeoutError:
+        del_client()
+        raise ConnectionError(f"Failed to connect to server {hostname}:{port} within {timeout}s")
     print(f"Client connected to server {hostname}:{port} (pid = {os.getpid()}).")
 
 def disconnect() -> None:
